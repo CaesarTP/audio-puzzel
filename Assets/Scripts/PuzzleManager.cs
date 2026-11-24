@@ -1,40 +1,96 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PuzzleManager : MonoBehaviour
 {
     [Header("Correct Button Sequence")]
     [SerializeField] private int[] correctSequence = { 7, 5, 6, 0, 2 };
 
+    [Header("Grid Buttons")]
+    [SerializeField] private Button[] gridButtons;
+
     [Header("UI Feedback")]
     [SerializeField] private TMP_Text feedbackText;
 
+    private int[] playerSequence = new int[5];
     private int currentStep = 0;
+
+    private Image[] buttonImages;
+    private Color[] originalColors;
+
+    private void Awake()
+    {
+        // Get the Image component from each button
+        buttonImages = new Image[gridButtons.Length];
+        originalColors = new Color[gridButtons.Length];
+
+        for (int i = 0; i < gridButtons.Length; i++)
+        {
+            buttonImages[i] = gridButtons[i].GetComponent<Image>();
+            originalColors[i] = buttonImages[i].color;
+        }
+    }
 
     public void PressButton(int buttonIndex)
     {
-        if (buttonIndex == correctSequence[currentStep])
+        // Ignore presses once all 5 buttons have been entered
+        if (currentStep >= 5)
+            return;
+
+        // Clear old feedback when a new attempt begins
+        if (currentStep == 0)
         {
-            currentStep++;
+            CancelInvoke(nameof(ResetPuzzle));
+            feedbackText.text = "";
+        }
 
-            // GREEN text for correct buttons
-            feedbackText.color = Color.green;
-            feedbackText.text = "Correct! " + currentStep + "/5";
+        // Highlight the pressed button
+        buttonImages[buttonIndex].color = Color.yellow;
 
-            if (currentStep == correctSequence.Length)
+        // Record the button press
+        playerSequence[currentStep] = buttonIndex;
+        currentStep++;
+
+        // Check the sequence after 5 presses
+        if (currentStep == 5)
+        {
+            bool isCorrect = true;
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (playerSequence[i] != correctSequence[i])
+                {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            if (isCorrect)
             {
                 feedbackText.color = Color.green;
-                feedbackText.text = "CORRECT! Puzzle solved!";
-                currentStep = 0;
+                feedbackText.text = "Correct! You solved the puzzle!";
             }
-        }
-        else
-        {
-            // RED text for wrong buttons
-            feedbackText.color = Color.red;
-            feedbackText.text = "Wrong order! Try again.";
+            else
+            {
+                feedbackText.color = Color.red;
+                feedbackText.text = "Wrong button order! Try again.";
+            }
 
-            currentStep = 0;
+            // Reset everything after 1 second
+            Invoke(nameof(ResetPuzzle), 1f);
         }
+    }
+
+    private void ResetPuzzle()
+    {
+        // Restore all original button colours
+        for (int i = 0; i < buttonImages.Length; i++)
+        {
+            buttonImages[i].color = originalColors[i];
+        }
+
+        feedbackText.text = "";
+        currentStep = 0;
     }
 }
